@@ -9,7 +9,7 @@ export const DEFAULT_CATEGORIES = [
     { id: 'adhesive', label: { ar: 'غراء ورغوة', en: 'Glue & Foam', ur: 'چپکنے والا', zh: '胶粘剂', ru: 'Клей', es: 'Pegamento y Espuma' } },
 ];
 
-const API_URL = 'http://localhost:5000/api/products';
+const API_BASE_URL = 'https://your-render-url.onrender.com/api';
 const languages = ['ar', 'en', 'ur', 'zh', 'ru', 'es'];
 const readApiResponse = async (response) => {
     const body = await response.text();

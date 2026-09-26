@@ -1,30 +1,37 @@
 import { useState, useEffect } from 'react';
+import { API_BASE_URL } from '../context/AdminContext.jsx';
 
 export default function Login({ onLogin }) {
     const [user, setUser] = useState('');
     const [pass, setPass] = useState('');
     const [err, setErr] = useState('');
+    const [submitting, setSubmitting] = useState(false);
 
     useEffect(() => {
         document.title = 'Al Najjar - Admin Login';
     }, []);
 
-    const handleLogin = (e) => {
+    const handleLogin = async (e) => {
         e.preventDefault();
-        const username = user.trim();
-        const password = pass.trim();
-        
-        if (!username || !password) {
+        if (!user.trim() || !pass) {
             setErr('Please enter both username and password.');
             return;
         }
-
-        if (username.toLowerCase() === 'alnajjar' && password === 'alnajjar123$') {
-            sessionStorage.setItem('admin_auth', 'true');
+        setSubmitting(true);
+        try {
+            const response = await fetch(`${API_BASE_URL}/admin/login`, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: user.trim(), password: pass }),
+            });
+            const result = await response.json();
+            if (!response.ok || !result.success || !result.token) throw new Error(result.message || 'Unable to sign in');
+            sessionStorage.setItem('admin_token', result.token);
             onLogin();
-        } else {
-            setErr('Invalid username or password.');
+        } catch (error) {
+            setErr(error.message || 'Unable to sign in. Check the API connection.');
             setPass('');
+        } finally {
+            setSubmitting(false);
         }
     };
 
@@ -73,10 +80,11 @@ export default function Login({ onLogin }) {
                     )}
                     
                     <button 
-                        type="submit" 
+                        type="submit"
+                        disabled={submitting}
                         className="w-full bg-brand hover:bg-brand/80 text-black font-black mt-2 py-3.5 rounded-xl transition-all shadow-lg shadow-brand/20 hover:shadow-brand/40 active:scale-[0.98] uppercase tracking-wide text-[13px]"
                     >
-                        Sign In
+                        {submitting ? 'Signing in…' : 'Sign In'}
                     </button>
                     
                     <a href="/" className="text-[11px] font-bold text-zinc-500 hover:text-zinc-300 text-center mt-2 flex items-center justify-center gap-1 transition-colors">

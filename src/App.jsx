@@ -1,4 +1,5 @@
 import { useState, useEffect, lazy, Suspense } from 'react';
+import { API_BASE_URL } from './context/AdminContext.jsx';
 import { LanguageProvider, useLang } from './context/LanguageContext.jsx';
 import { AdminProvider } from './context/AdminContext.jsx';
 import Header from './components/Header.jsx';
@@ -89,7 +90,21 @@ function AppContent() {
 
 export default function App() {
     const [routeType] = useState(() => getRouteState());
-    const [isAdminAuth, setIsAdminAuth] = useState(() => sessionStorage.getItem('admin_auth') === 'true');
+    const [isAdminAuth, setIsAdminAuth] = useState(false);
+    const [checkingAdminAuth, setCheckingAdminAuth] = useState(true);
+
+    useEffect(() => {
+        if (routeType !== 'admin') return;
+        const token = sessionStorage.getItem('admin_token');
+        if (!token) { setCheckingAdminAuth(false); return; }
+        fetch(`${API_BASE_URL}/admin/session`, { headers: { Authorization: `Bearer ${token}` } })
+            .then(response => {
+                if (!response.ok) throw new Error('Session expired');
+                setIsAdminAuth(true);
+            })
+            .catch(() => sessionStorage.removeItem('admin_token'))
+            .finally(() => setCheckingAdminAuth(false));
+    }, [routeType]);
 
     if (routeType === '404') {
         return (
@@ -103,7 +118,9 @@ export default function App() {
         return (
             <AdminProvider>
                 <LanguageProvider>
-                    {!isAdminAuth ? (
+                    {checkingAdminAuth ? (
+                        <div className="flex h-screen items-center justify-center bg-[#0f0f11] text-zinc-400 text-sm">Checking admin session…</div>
+                    ) : !isAdminAuth ? (
                         <Login onLogin={() => setIsAdminAuth(true)} />
                     ) : (
                         <Suspense fallback={

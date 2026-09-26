@@ -8,6 +8,7 @@ import ContactTab    from './tabs/ContactTab.jsx';
 import HeroTab       from './tabs/HeroTab.jsx';
 import BranchesTab   from './tabs/BranchesTab.jsx';
 import AboutTab      from './tabs/AboutTab.jsx';
+import { useAdmin } from '../context/AdminContext.jsx';
 
 const TAB_COMPONENTS = {
     products:   ProductsTab,
@@ -20,6 +21,7 @@ const TAB_COMPONENTS = {
 };
 
 export default memo(function AdminPanel() {
+    const { settingsError } = useAdmin();
     const [activeTab,   setActiveTab]   = useState('products');
     const [mobileOpen,  setMobileOpen]  = useState(false);  // overlay on mobile
     const [collapsed,   setCollapsed]   = useState(false);  // icon-only on desktop
@@ -55,6 +57,8 @@ export default memo(function AdminPanel() {
             <div className="flex-1 flex flex-col overflow-hidden min-w-0">
                 {/* Top bar */}
                 <Topbar activeTab={activeTab} setMobileOpen={setMobileOpen} />
+
+                {settingsError && <div role="alert" className="mx-4 mt-3 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">{settingsError}</div>}
 
                 {/* Tab content */}
                 <main className="flex-1 overflow-y-auto p-4 sm:p-6">

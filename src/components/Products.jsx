@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, memo, useRef, useEffect } from 'react';
-import { useAdmin } from '../context/AdminContext.jsx';
+import { API_BASE_URL, useAdmin } from '../context/AdminContext.jsx';
 import { useLang } from '../context/LanguageContext.jsx';
 
 import { Skeleton, SkeletonCard } from './ui/Skeleton.jsx';
@@ -234,7 +234,7 @@ export default function Products() {
     useEffect(() => {
         const fetchProducts = async () => {
             try {
-                const response = await fetch('http://localhost:5000/api/products');
+                const response = await fetch(`${API_BASE_URL}/products`);
                 const data = await response.json();
 
                 if (data.success && Array.isArray(data.data)) {

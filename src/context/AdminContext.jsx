@@ -9,7 +9,7 @@ export const DEFAULT_CATEGORIES = [
     { id: 'adhesive', label: { ar: 'غراء ورغوة', en: 'Glue & Foam', ur: 'چپکنے والا', zh: '胶粘剂', ru: 'Клей', es: 'Pegamento y Espuma' } },
 ];
 
-const API_BASE_URL = 'https://alnajjar-backend.onrender.com/api'
+export const API_BASE_URL = (import.meta.env.VITE_API_URL || 'https://alnajjar-backend.onrender.com/api').replace(/\/$/, '');
 const languages = ['ar', 'en', 'ur', 'zh', 'ru', 'es'];
 const readApiResponse = async (response) => {
     const body = await response.text();
@@ -59,13 +59,15 @@ export function AdminProvider({ children }) {
     const [branches, setBranches] = useState(() => readSetting('branches', DEFAULT_BRANCHES));
     const [loading, setLoading] = useState(true);
     const [productsError, setProductsError] = useState('');
+    const [settingsError, setSettingsError] = useState('');
     const [pendingOperations, setPendingOperations] = useState(0);
     const isLoading = pendingOperations > 0;
 
+    const authHeaders = () => ({ Authorization: `Bearer ${sessionStorage.getItem('admin_token') || ''}` });
     const refreshProducts = useCallback(async () => {
         setProductsError('');
         try {
-            const response = await fetch(API_URL);
+            const response = await fetch(`${API_BASE_URL}/products`);
             const result = await readApiResponse(response);
             if (!Array.isArray(result.data)) throw new Error('The products API returned an invalid response');
             const transformed = result.data.map(toProduct);
@@ -79,10 +81,31 @@ export function AdminProvider({ children }) {
 
     useEffect(() => { refreshProducts(); }, [refreshProducts]);
 
+    useEffect(() => {
+        let cancelled = false;
+        fetch(`${API_BASE_URL}/settings`).then(readApiResponse).then(({ data = {} }) => {
+            if (cancelled) return;
+            if (data.categories) setCategories(data.categories);
+            if (data.contact) setContactInfo(data.contact);
+            if (data.hero) setHeroSettings(data.hero);
+            if (data.about) setAboutContent(data.about);
+            if (data.partners) setPartnersSettings(data.partners);
+            if (data.branches) setBranches(data.branches);
+        }).catch(error => console.error('Failed to load shared site settings:', error));
+        return () => { cancelled = true; };
+    }, []);
+
     const saveSetting = useCallback((key, value, setter) => {
         setter(value);
         try { localStorage.setItem(`alnajjar_${key}`, JSON.stringify(value)); }
         catch (error) { console.error(`Unable to save ${key} settings:`, error); }
+        fetch(`${API_BASE_URL}/settings`, { method: 'PUT', headers: { 'Content-Type': 'application/json', ...authHeaders() }, body: JSON.stringify({ [key]: value }) })
+            .then(readApiResponse)
+            .then(() => setSettingsError(''))
+            .catch(error => {
+                console.error(`Unable to save shared ${key} settings:`, error);
+                setSettingsError(`Could not publish ${key} changes. Check your admin session and API connection, then save again.`);
+            });
     }, []);
     const updateContactInfo = useCallback(data => saveSetting('contact', { ...contactInfo, ...data }, setContactInfo), [contactInfo, saveSetting]);
     const resetContact = useCallback(() => saveSetting('contact', DEFAULT_CONTACT, setContactInfo), [saveSetting]);
@@ -117,7 +140,7 @@ export function AdminProvider({ children }) {
         };
         setPendingOperations(count => count + 1);
         try {
-            const response = await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+            const response = await fetch(`${API_BASE_URL}/products`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeaders() }, body: JSON.stringify(payload) });
             const result = await readApiResponse(response);
             if (!result.success || !result.data) throw new Error('The products API did not return the saved product');
             const saved = toProduct(result.data);
@@ -133,7 +156,7 @@ export function AdminProvider({ children }) {
     const updateProduct = useCallback(async (id, product) => {
         setPendingOperations(count => count + 1);
         try {
-            const response = await fetch(`${API_URL}/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
+            const response = await fetch(`${API_BASE_URL}/products/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json', ...authHeaders() }, body: JSON.stringify({
                 nameAr: product.name?.ar || '', nameEn: product.name?.en || '', category: product.category || 'ceramic',
                 price: Number(product.price) || 0, stock: Number(product.stock) || 0, image: product.image || '',
                 specs: product.specs || {}, colors: product.colors || [], images: product.images || [], sizes: product.sizes || [], labels: product.labels || [],
@@ -151,9 +174,9 @@ export function AdminProvider({ children }) {
     const deleteProduct = useCallback(async (id) => {
         setPendingOperations(count => count + 1);
         try {
-            const response = await fetch(`${API_URL}/${id}`, {
+            const response = await fetch(`${API_BASE_URL}/products/${id}`, {
                 method: 'DELETE',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 'Content-Type': 'application/json', ...authHeaders() },
             });
             const result = await readApiResponse(response);
             if (!result.success) throw new Error('The products API did not confirm deletion');
@@ -167,11 +190,11 @@ export function AdminProvider({ children }) {
     }, []);
 
     const value = useMemo(() => ({
-        products, categories, loading, productsError, isLoading, refreshProducts, addProduct, updateProduct, deleteProduct, resetProducts: refreshProducts,
+        products, categories, loading, productsError, settingsError, isLoading, refreshProducts, addProduct, updateProduct, deleteProduct, resetProducts: refreshProducts,
         contactInfo, updateContactInfo, resetContact, heroSettings, updateHeroSettings, resetHero,
         aboutContent, updateAboutContent, resetAbout, partnersSettings, updatePartnersSettings, addPartner, updatePartner, deletePartner, resetPartners,
         branches, addBranch, updateBranch, deleteBranch, resetBranches, addCategory, deleteCategory, resetCategories,
-    }), [products, categories, loading, productsError, isLoading, refreshProducts, addProduct, updateProduct, deleteProduct, contactInfo, updateContactInfo, resetContact, heroSettings, updateHeroSettings, resetHero, aboutContent, updateAboutContent, resetAbout, partnersSettings, updatePartnersSettings, addPartner, updatePartner, deletePartner, resetPartners, branches, addBranch, updateBranch, deleteBranch, resetBranches, addCategory, deleteCategory, resetCategories]);
+    }), [products, categories, loading, productsError, settingsError, isLoading, refreshProducts, addProduct, updateProduct, deleteProduct, contactInfo, updateContactInfo, resetContact, heroSettings, updateHeroSettings, resetHero, aboutContent, updateAboutContent, resetAbout, partnersSettings, updatePartnersSettings, addPartner, updatePartner, deletePartner, resetPartners, branches, addBranch, updateBranch, deleteBranch, resetBranches, addCategory, deleteCategory, resetCategories]);
     return <AdminContext.Provider value={value}>{children}</AdminContext.Provider>;
 }
 
@@ -180,4 +203,3 @@ export function useAdmin() {
     if (!context) throw new Error('useAdmin must be used within AdminProvider');
     return context;
 }
-

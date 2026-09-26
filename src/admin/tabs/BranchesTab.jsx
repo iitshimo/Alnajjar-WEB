@@ -195,9 +195,20 @@ export default function BranchesTab() {
                             </button>
                         </div>
 
-                        {/* Form */}
+                                {/* Form */}
                         <div className="overflow-y-auto p-5 flex flex-col gap-4">
-                            {/* ... (Country + Type unchanged) */}
+                            {/* Country */}
+                            <div>
+                                <p className={lbl}>{isRtl ? 'الدولة' : 'Country'}</p>
+                                <select
+                                    value={form.country || 'OM'}
+                                    onChange={e => setFormField('country', e.target.value)}
+                                    className={inp}
+                                >
+                                    <option value="OM">{isRtl ? 'عُمان' : 'Oman'}</option>
+                                    <option value="AE">{isRtl ? 'الإمارات العربية المتحدة' : 'United Arab Emirates'}</option>
+                                </select>
+                            </div>
 
                             {/* Names */}
                             <div className="flex flex-col gap-4">

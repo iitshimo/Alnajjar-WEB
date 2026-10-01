@@ -1,9 +1,10 @@
-const productionApiUrl = 'https://alnajjar-backend.onrender.com/api';
+const productionApiUrl = 'https://alnajjar-web.onrender.com/api';
 const configuredApiUrl = import.meta.env.VITE_API_URL?.trim();
 const configuredUrlIsLocal = /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(?::\d+)?(?:\/|$)/i.test(configuredApiUrl || '');
+const configuredUrlIsStale = /^https?:\/\/alnajjar-backend\.onrender\.com(?::\d+)?(?:\/|$)/i.test(configuredApiUrl || '');
 
-// A loopback URL only works on the developer's machine, never from a deployed site.
-const apiUrl = import.meta.env.PROD && configuredUrlIsLocal
+// Loopback and retired Render URLs must never override the production service.
+const apiUrl = import.meta.env.PROD && (configuredUrlIsLocal || configuredUrlIsStale)
     ? productionApiUrl
     : configuredApiUrl || productionApiUrl;
 

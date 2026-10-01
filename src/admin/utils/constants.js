@@ -6,4 +6,5 @@ export const TABS = [
     { id: 'contact',    label: 'Contact',    icon: 'contact_page'  },
     { id: 'hero',       label: 'Hero',       icon: 'wallpaper'     },
     { id: 'about',      label: 'About Us',   icon: 'info'          },
+    { id: 'delivery',   label: 'Dispatch Board', icon: 'local_shipping' },
 ];

@@ -2,6 +2,8 @@ import crypto from 'node:crypto';
 import express from 'express';
 import cors from 'cors';
 import mongoose from 'mongoose';
+import DeliveryOrder from './models/DeliveryOrder.js';
+import createAdminDeliveryOrdersRouter from './routes/adminDeliveryOrders.js';
 
 const app = express();
 const PORT = Number(process.env.PORT) || 5000;
@@ -81,6 +83,7 @@ app.post('/api/admin/login', (req, res) => {
     res.json({ success: true, token: createToken(ADMIN_USERNAME) });
 });
 app.get('/api/admin/session', requireAdmin, (_req, res) => res.json({ success: true }));
+app.use('/api/admin/delivery-orders', requireAdmin, createAdminDeliveryOrdersRouter({ DeliveryOrder }));
 app.get('/api/health', (_req, res) => res.json({ success: true, service: 'al-najjar-api', database: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected' }));
 
 app.get('/api/settings', async (_req, res) => {

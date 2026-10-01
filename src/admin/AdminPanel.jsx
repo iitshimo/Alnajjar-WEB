@@ -8,9 +8,11 @@ import ContactTab    from './tabs/ContactTab.jsx';
 import HeroTab       from './tabs/HeroTab.jsx';
 import BranchesTab   from './tabs/BranchesTab.jsx';
 import AboutTab      from './tabs/AboutTab.jsx';
+import DeliveryTab from './tabs/DeliveryTab.jsx';
 import { useAdmin } from '../context/AdminContext.jsx';
 
 const TAB_COMPONENTS = {
+    delivery: DeliveryTab,
     products:   ProductsTab,
     categories: CategoriesTab,
     partners:   PartnersTab,

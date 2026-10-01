@@ -10,11 +10,11 @@ import BranchesPage from './pages/BranchesPage.jsx';
 import ProductsPage from './pages/ProductsPage.jsx';
 import Login from './admin/Login.jsx';
 
-// Lazy-load admin panel — only loads when user visits /alnajjer-root
+// Lazy-load admin panel only when the admin route is requested.
 const AdminPanel = lazy(() => import('./admin/AdminPanel.jsx'));
 
 const getRouteState = () => {
-    const p = window.location.pathname;
+    const p = window.location.pathname.replace(/\/+$/, '') || '/';
     if (p === '/alnajjar-root') return 'admin';
     if (p === '/' || p === '/index.html') return 'app';
     return '404';

@@ -88,7 +88,7 @@ export default memo(function Sidebar({ activeTab, onTabClick, mobileOpen, setMob
                 <div className="px-4 py-4 border-t border-white/6 shrink-0 space-y-1">
                     <div className="flex items-center gap-2">
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse flex-shrink-0" />
-                        <span className="text-[11px] text-zinc-500 truncate">localhost:5173</span>
+                        <span className="text-[11px] text-zinc-500 truncate">{window.location.host}</span>
                     </div>
                     <p className="text-[10px] text-zinc-700">{products.length} {t.admin.sidebar.products}</p>
                 </div>

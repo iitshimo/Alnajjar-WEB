@@ -22,7 +22,7 @@ const DEFAULT_CONTACT = {
     facebook: '#',
 };
 
-const API_BASE_URL = 'http://localhost:5000/api';
+import { API_BASE_URL } from '../api/config.js';
 
 // ─── Context ───────────────────────────────────────────────────────────────────
 const AdminContext = createContext(null);

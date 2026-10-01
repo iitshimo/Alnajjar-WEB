@@ -9,7 +9,8 @@ export const DEFAULT_CATEGORIES = [
     { id: 'adhesive', label: { ar: 'غراء ورغوة', en: 'Glue & Foam', ur: 'چپکنے والا', zh: '胶粘剂', ru: 'Клей', es: 'Pegamento y Espuma' } },
 ];
 
-export const API_BASE_URL = (import.meta.env.VITE_API_URL || 'https://alnajjar-backend.onrender.com/api').replace(/\/$/, '');
+import { API_BASE_URL } from '../api/config.js';
+export { API_BASE_URL };
 const languages = ['ar', 'en', 'ur', 'zh', 'ru', 'es'];
 const readApiResponse = async (response) => {
     const body = await response.text();

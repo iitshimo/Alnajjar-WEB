@@ -13,11 +13,36 @@ import Login from './admin/Login.jsx';
 // Lazy-load admin panel only when the admin route is requested.
 const AdminPanel = lazy(() => import('./admin/AdminPanel.jsx'));
 
+const normalizePath = () => window.location.pathname.replace(/\/+$/, '') || '/';
+const publicPathPages = {
+    '/': 'home',
+    '/index.html': 'home',
+    '/home': 'home',
+    '/products': 'products',
+    '/about': 'about',
+    '/branches': 'branches',
+    '/contact': 'contact',
+};
+const hashPages = {
+    '#/': 'home',
+    '#/home': 'home',
+    '#/products': 'products',
+    '#/about': 'about',
+    '#/branches': 'branches',
+    '#/contact': 'contact',
+};
+
 const getRouteState = () => {
-    const p = window.location.pathname.replace(/\/+$/, '') || '/';
-    if (p === '/alnajjar-root') return 'admin';
-    if (p === '/' || p === '/index.html') return 'app';
+    const path = normalizePath();
+    if (path === '/alnajjar-root') return 'admin';
+    if (Object.hasOwn(publicPathPages, path)) return 'app';
     return '404';
+};
+
+const getPublicPage = () => {
+    const hash = window.location.hash;
+    if (hash) return hashPages[hash] || 'notfound';
+    return publicPathPages[normalizePath()] || 'notfound';
 };
 
 function NotFoundPage() {
@@ -46,21 +71,19 @@ function NotFoundPage() {
 
 function AppContent() {
     const { t } = useLang();
-    const [page, setPage] = useState('home');
+    const [page, setPage] = useState(getPublicPage);
 
     useEffect(() => {
         const syncPage = () => {
-            const hash = window.location.hash;
-            if (hash === '' || hash === '#/' || hash === '#/home') setPage('home');
-            else if (hash === '#/about') setPage('about');
-            else if (hash === '#/contact') setPage('contact');
-            else if (hash === '#/branches') setPage('branches');
-            else if (hash === '#/products') setPage('products');
-            else setPage('notfound');
+            setPage(getPublicPage());
         };
         syncPage();
         window.addEventListener('hashchange', syncPage);
-        return () => window.removeEventListener('hashchange', syncPage);
+        window.addEventListener('popstate', syncPage);
+        return () => {
+            window.removeEventListener('hashchange', syncPage);
+            window.removeEventListener('popstate', syncPage);
+        };
     }, []);
 
     useEffect(() => {

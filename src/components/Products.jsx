@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, memo, useRef, useEffect } from 'react';
-import { API_BASE_URL, useAdmin } from '../context/AdminContext.jsx';
+import { useAdmin } from '../context/AdminContext.jsx';
 import { useLang } from '../context/LanguageContext.jsx';
 
 import { Skeleton, SkeletonCard } from './ui/Skeleton.jsx';
@@ -212,15 +212,11 @@ const ProductModal = memo(function ProductModal({ product, lang, onClose }) {
 
 // ─── Main ────────────────────────────────────────────────────────────────────
 export default function Products() {
-    const { categories = [] } = useAdmin();
+    const { categories = [], products = [], loading, productsError, refreshProducts } = useAdmin();
     const { lang, t } = useLang();
     const isRtl = t.dir === 'rtl';
 
-    // Local state for API products
-    const [apiProducts, setApiProducts] = useState([]);
     const [loaded, setLoaded] = useState(false);
-
-    const products = apiProducts;
 
     // Grouping
     const catTabs = useMemo(() => [{ id: 'all', label: { ar: 'الكل', en: 'All', ur: 'سب', zh: '全部', ru: 'Все' } }, ...categories], [categories]);
@@ -230,40 +226,11 @@ export default function Products() {
     const [selectedProduct, setSelectedProduct] = useState(null);
     const catScrollRef = useRef(null);
 
-    // Fetch products from API
     useEffect(() => {
-        const fetchProducts = async () => {
-            try {
-                const response = await fetch(`${API_BASE_URL}/products`);
-                const data = await response.json();
-
-                if (data.success && Array.isArray(data.data)) {
-                    // Transform API products to match component expectations
-                    const transformed = data.data.map(product => ({
-                        ...product,
-                        id: product._id,
-                        name: { ar: product.nameAr || '', en: product.nameEn || '', ur: '', zh: '', ru: '', es: '' },
-                        price: Number(product.price) || 0,
-                        image: product.image || '',
-                        category: product.category || 'ceramic',
-                        stock: Number(product.stock) || 0,
-                        specs: product.specs || {}, colors: product.colors || [], sizes: product.sizes || [], labels: product.labels || [],
-                    }));
-
-                    setApiProducts(transformed);
-                    console.log('✅ Products loaded from API:', transformed);
-                } else {
-                    throw new Error(data.message || 'Products API returned an invalid response');
-                }
-            } catch (error) {
-                console.error('❌ Failed to fetch products:', error);
-            } finally {
-                setTimeout(() => setLoaded(true), 300);
-            }
-        };
-
-        fetchProducts();
-    }, []);
+        if (loading) return undefined;
+        const timer = window.setTimeout(() => setLoaded(true), 300);
+        return () => window.clearTimeout(timer);
+    }, [loading]);
 
     const openProduct = useCallback((p) => setSelectedProduct(p), []);
     const closeModal = useCallback(() => setSelectedProduct(null), []);
@@ -360,10 +327,13 @@ export default function Products() {
                     </div>
                 ) : filtered.length === 0 ? (
                     <div className="text-center py-24 text-zinc-400">
-                        <span className="material-icons text-5xl block mb-3">search_off</span>
+                        <span className="material-icons text-5xl block mb-3">{productsError ? 'cloud_off' : 'search_off'}</span>
                         <p className="font-semibold text-sm">
-                            {lang === 'ar' ? 'لا توجد منتجات' : lang === 'ur' ? 'کوئی مصنوع نہیں ملا' : lang === 'zh' ? '未找到产品' : lang === 'ru' ? 'Нет товаров' : 'No products found'}
+                            {productsError
+                                ? 'Products could not be loaded. Check the connection and try again.'
+                                : lang === 'ar' ? 'لا توجد منتجات' : lang === 'ur' ? 'کوئی مصنوع نہیں ملا' : lang === 'zh' ? '未找到产品' : lang === 'ru' ? 'Нет товаров' : 'No products found'}
                         </p>
+                        {productsError && <button type="button" onClick={refreshProducts} className="mt-4 rounded-lg bg-brand px-4 py-2 text-xs font-bold text-black">Try again</button>}
                     </div>
                 ) : (
                     <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">

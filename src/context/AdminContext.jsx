@@ -66,6 +66,7 @@ export function AdminProvider({ children }) {
 
     const authHeaders = () => ({ Authorization: `Bearer ${sessionStorage.getItem('admin_token') || ''}` });
     const refreshProducts = useCallback(async () => {
+        setLoading(true);
         setProductsError('');
         try {
             const response = await fetch(`${API_BASE_URL}/products`);

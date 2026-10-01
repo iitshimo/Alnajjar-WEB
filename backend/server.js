@@ -14,6 +14,14 @@ const AUTH_SECRET = process.env.AUTH_SECRET;
 const configuredOrigins = process.env.ALLOWED_ORIGINS;
 const allowedOrigins = (configuredOrigins || 'http://localhost:5173,http://localhost:5174')
     .split(',').map(origin => origin.trim()).filter(Boolean);
+const isAllowedVercelPreviewOrigin = origin => {
+    try {
+        const url = new URL(origin);
+        return url.protocol === 'https:' && url.hostname.endsWith('.vercel.app');
+    } catch {
+        return false;
+    }
+};
 
 if (!MONGODB_URI || !ADMIN_USERNAME || !ADMIN_PASSWORD || !AUTH_SECRET || AUTH_SECRET.length < 32 || (process.env.NODE_ENV === 'production' && !configuredOrigins)) {
     throw new Error('Set MONGODB_URI, ADMIN_USERNAME, ADMIN_PASSWORD, AUTH_SECRET (at least 32 characters), and production ALLOWED_ORIGINS before starting the API.');
@@ -22,7 +30,7 @@ if (!MONGODB_URI || !ADMIN_USERNAME || !ADMIN_PASSWORD || !AUTH_SECRET || AUTH_S
 app.disable('x-powered-by');
 app.set('trust proxy', 1);
 app.use(cors({ origin(origin, callback) {
-    if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
+    if (!origin || allowedOrigins.includes(origin) || isAllowedVercelPreviewOrigin(origin)) return callback(null, true);
     return callback(new Error('Origin is not allowed by CORS'));
 } }));
 app.use(express.json({ limit: '2mb' }));

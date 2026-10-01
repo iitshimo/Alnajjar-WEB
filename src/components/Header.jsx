@@ -17,10 +17,14 @@ export default memo(function Header({ currentPage = 'home', setPage }) {
     const langRef = useRef(null);
     const currRef = useRef(null);
 
-    const handleLogoContextMenu = (event) => {
-        if (!event.ctrlKey) return;
+    const openAdminFromLogo = (event) => {
         event.preventDefault();
-        window.location.assign('/alnajjar-root');
+        event.stopPropagation();
+        window.location.href = '/alnajjar-root';
+    };
+
+    const handleLogoContextMenu = (event) => {
+        if (event.ctrlKey) openAdminFromLogo(event);
     };
 
     useEffect(() => {
@@ -47,7 +51,12 @@ export default memo(function Header({ currentPage = 'home', setPage }) {
 
                 {/* Left: Logo + Desktop Nav */}
                 <div className="flex-1 flex items-center gap-10 xl:gap-16 min-w-0">
-                    <a href="#/home" onContextMenu={handleLogoContextMenu} className="shrink-0 relative group">
+                    <a
+                        href="#/home"
+                        onContextMenu={handleLogoContextMenu}
+                        onDoubleClick={openAdminFromLogo}
+                        className="shrink-0 relative group"
+                    >
                         <div className="absolute inset-0 bg-brand/10 blur-xl rounded-full scale-0 group-hover:scale-150 transition-transform duration-700 ease-out" />
                         <img src="/Assets/Logo/logo.png" alt="Al Najjar" fetchPriority="high" className="h-10 sm:h-12 lg:h-14 w-auto object-contain relative z-10 drop-shadow-sm" />
                     </a>

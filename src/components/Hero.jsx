@@ -1,4 +1,4 @@
-import { memo } from 'react';
+import { memo, useEffect, useState } from 'react';
 import { useAdmin } from '../context/AdminContext.jsx';
 import { useLang } from '../context/LanguageContext.jsx';
 import { Button } from './ui/Button.jsx';
@@ -9,21 +9,36 @@ export default memo(function Hero() {
 
     const isVideo = heroSettings?.type === 'video';
     const src = heroSettings?.src || '';
+    const [videoReady, setVideoReady] = useState(false);
+
+    useEffect(() => {
+        setVideoReady(false);
+        if (!isVideo || !src) return undefined;
+
+        const prefersReducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+        const savesData = navigator.connection?.saveData;
+        if (prefersReducedMotion || savesData) return undefined;
+
+        // Let the page content render before starting the large background video request.
+        const timer = window.setTimeout(() => setVideoReady(true), 1200);
+        return () => window.clearTimeout(timer);
+    }, [isVideo, src]);
+
+    const showVideo = isVideo && src && videoReady;
 
     return (
         <section className="relative w-full min-h-screen flex items-center overflow-hidden">
             {/* Background */}
-            {isVideo && src ? (
+            {showVideo ? (
                 <video
                     key={src}
                     className="absolute inset-0 w-full h-full object-cover"
                     autoPlay muted loop playsInline
-                    preload="auto"
-                    fetchPriority="high"
+                    preload="none"
                 >
                     <source src={src} type="video/mp4" />
                 </video>
-            ) : src ? (
+            ) : !isVideo && src ? (
                 <img src={src} alt="Hero" fetchPriority="high" className="absolute inset-0 w-full h-full object-cover" />
             ) : (
                 <div className="hero-animated-bg absolute inset-0 w-full h-full" />

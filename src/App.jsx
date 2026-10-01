@@ -4,12 +4,13 @@ import { LanguageProvider, useLang } from './context/LanguageContext.jsx';
 import { AdminProvider } from './context/AdminContext.jsx';
 import Header from './components/Header.jsx';
 import Hero from './components/Hero.jsx';
-import AboutPage from './pages/AboutPage.jsx';
-import ContactPage from './pages/ContactPage.jsx';
-import BranchesPage from './pages/BranchesPage.jsx';
-import ProductsPage from './pages/ProductsPage.jsx';
 import Login from './admin/Login.jsx';
 
+// Public pages are loaded only when visited to keep the initial home bundle small.
+const AboutPage = lazy(() => import('./pages/AboutPage.jsx'));
+const ContactPage = lazy(() => import('./pages/ContactPage.jsx'));
+const BranchesPage = lazy(() => import('./pages/BranchesPage.jsx'));
+const ProductsPage = lazy(() => import('./pages/ProductsPage.jsx'));
 // Lazy-load admin panel only when the admin route is requested.
 const AdminPanel = lazy(() => import('./admin/AdminPanel.jsx'));
 
@@ -101,11 +102,13 @@ function AppContent() {
         <div className="relative bg-white text-zinc-800 font-sans selection:bg-brand/30">
             <Header currentPage={page} setPage={setPage} />
             <main className="w-full relative">
-                {page === 'home' && <Hero />}
-                {page === 'about' && <AboutPage />}
-                {page === 'contact' && <ContactPage />}
-                {page === 'branches' && <BranchesPage />}
-                {page === 'products' && <ProductsPage />}
+                <Suspense fallback={<div className="min-h-[50vh]" aria-busy="true" />}>
+                    {page === 'home' && <Hero />}
+                    {page === 'about' && <AboutPage />}
+                    {page === 'contact' && <ContactPage />}
+                    {page === 'branches' && <BranchesPage />}
+                    {page === 'products' && <ProductsPage />}
+                </Suspense>
             </main>
         </div>
     );

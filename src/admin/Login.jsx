@@ -23,7 +23,16 @@ export default function Login({ onLogin }) {
                 method: 'POST', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ username: user.trim(), password: pass }),
             });
-            const result = await response.json();
+            const responseText = await response.text();
+            let result;
+            try {
+                result = responseText.trim() ? JSON.parse(responseText) : null;
+            } catch {
+                throw new Error(`Login service returned a non-JSON response (HTTP ${response.status}).`);
+            }
+            if (!result) {
+                throw new Error(`Login service returned an empty response (HTTP ${response.status}).`);
+            }
             if (!response.ok || !result.success || !result.token) throw new Error(result.message || 'Unable to sign in');
             sessionStorage.setItem('admin_token', result.token);
             onLogin();

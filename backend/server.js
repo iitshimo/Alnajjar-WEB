@@ -8,8 +8,8 @@ import createAdminDeliveryOrdersRouter from './routes/adminDeliveryOrders.js';
 const app = express();
 const PORT = Number(process.env.PORT) || 5000;
 const MONGODB_URI = process.env.MONGODB_URI;
-const ADMIN_USERNAME = process.env.ADMIN_USERNAME;
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
+const ADMIN_USERNAME = (process.env.ADMIN_USERNAME || '').trim().toLowerCase();
+const ADMIN_PASSWORD = (process.env.ADMIN_PASSWORD || '').trim();
 const AUTH_SECRET = process.env.AUTH_SECRET;
 const configuredOrigins = process.env.ALLOWED_ORIGINS;
 const allowedOrigins = (configuredOrigins || 'http://localhost:5173,http://localhost:5174')
@@ -23,8 +23,11 @@ const isAllowedVercelPreviewOrigin = origin => {
     }
 };
 
-if (!MONGODB_URI || !ADMIN_USERNAME || !ADMIN_PASSWORD || !AUTH_SECRET || AUTH_SECRET.length < 32 || (process.env.NODE_ENV === 'production' && !configuredOrigins)) {
-    throw new Error('Set MONGODB_URI, ADMIN_USERNAME, ADMIN_PASSWORD, AUTH_SECRET (at least 32 characters), and production ALLOWED_ORIGINS before starting the API.');
+if (!MONGODB_URI || !AUTH_SECRET || AUTH_SECRET.length < 32 || (process.env.NODE_ENV === 'production' && !configuredOrigins)) {
+    throw new Error('Set MONGODB_URI, AUTH_SECRET (at least 32 characters), and production ALLOWED_ORIGINS before starting the API.');
+}
+if (!ADMIN_USERNAME || !ADMIN_PASSWORD) {
+    console.warn('Admin login is unavailable: configure both ADMIN_USERNAME and ADMIN_PASSWORD in the server environment.');
 }
 
 app.disable('x-powered-by');
@@ -75,6 +78,9 @@ const requireAdmin = (req, res, next) => {
 
 const loginAttempts = new Map();
 app.post('/api/admin/login', (req, res) => {
+    if (!ADMIN_USERNAME || !ADMIN_PASSWORD) {
+        return res.status(503).json({ success: false, message: 'Admin login is not configured on the server' });
+    }
     const ip = req.ip;
     const now = Date.now();
     const entry = loginAttempts.get(ip) || { count: 0, resetAt: now + 15 * 60 * 1000 };
@@ -82,8 +88,8 @@ app.post('/api/admin/login', (req, res) => {
     if (entry.count >= 10) return res.status(429).json({ success: false, message: 'Too many login attempts. Try again later.' });
     entry.count += 1;
     loginAttempts.set(ip, entry);
-    const username = String(req.body?.username || '');
-    const password = String(req.body?.password || '');
+    const username = String(req.body?.username || '').trim().toLowerCase();
+    const password = String(req.body?.password || '').trim();
     if (!safeEqual(username, ADMIN_USERNAME) || !safeEqual(password, ADMIN_PASSWORD)) {
         return res.status(401).json({ success: false, message: 'Invalid username or password' });
     }

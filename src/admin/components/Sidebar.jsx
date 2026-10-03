@@ -3,9 +3,12 @@ import { useAdmin } from '../../context/AdminContext.jsx';
 import { useLang } from '../../context/LanguageContext.jsx';
 import { TABS } from '../utils/constants.js';
 
-export default memo(function Sidebar({ activeTab, onTabClick, mobileOpen, setMobileOpen, collapsed, setCollapsed }) {
+export default memo(function Sidebar({ activeTab, userRole, onTabClick, mobileOpen, setMobileOpen, collapsed, setCollapsed }) {
     const { products } = useAdmin();
     const { t } = useLang();
+    const visibleTabs = userRole === 'dispatch_staff'
+        ? TABS.filter(tab => tab.id === 'delivery')
+        : userRole === 'super_admin' ? TABS : [];
 
     return (
         <aside
@@ -52,7 +55,7 @@ export default memo(function Sidebar({ activeTab, onTabClick, mobileOpen, setMob
             )}
 
             <nav className="flex-1 px-2 pb-4 flex flex-col gap-0.5 overflow-y-auto mt-1">
-                {TABS.map(tab => {
+                {visibleTabs.map(tab => {
                     const isActive = tab.id === activeTab;
                     const localizedLabel = t.admin.sidebar[tab.id] || tab.label;
                     return (

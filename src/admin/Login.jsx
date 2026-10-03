@@ -33,9 +33,12 @@ export default function Login({ onLogin }) {
             if (!result) {
                 throw new Error(`Login service returned an empty response (HTTP ${response.status}).`);
             }
-            if (!response.ok || !result.success || !result.token) throw new Error(result.message || 'Unable to sign in');
+            if (!response.ok || !result.success || !result.token || !['super_admin', 'dispatch_staff'].includes(result.role)) {
+                throw new Error(result.message || 'Unable to sign in');
+            }
             sessionStorage.setItem('admin_token', result.token);
-            onLogin();
+            sessionStorage.setItem('admin_role', result.role);
+            onLogin({ role: result.role });
         } catch (error) {
             setErr(error.message || 'Unable to sign in. Check the API connection.');
             setPass('');

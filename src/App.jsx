@@ -117,18 +117,30 @@ function AppContent() {
 export default function App() {
     const [routeType] = useState(() => getRouteState());
     const [isAdminAuth, setIsAdminAuth] = useState(false);
+    const [userRole, setUserRole] = useState(null);
     const [checkingAdminAuth, setCheckingAdminAuth] = useState(true);
 
     useEffect(() => {
         if (routeType !== 'admin') return;
         const token = sessionStorage.getItem('admin_token');
-        if (!token) { setCheckingAdminAuth(false); return; }
+        if (!token) {
+            sessionStorage.removeItem('admin_role');
+            setCheckingAdminAuth(false);
+            return;
+        }
         fetch(`${API_BASE_URL}/admin/session`, { headers: { Authorization: `Bearer ${token}` } })
-            .then(response => {
+            .then(async response => {
                 if (!response.ok) throw new Error('Session expired');
+                const result = await response.json();
+                if (!['super_admin', 'dispatch_staff'].includes(result.role)) throw new Error('Session role is invalid');
+                sessionStorage.setItem('admin_role', result.role);
+                setUserRole(result.role);
                 setIsAdminAuth(true);
             })
-            .catch(() => sessionStorage.removeItem('admin_token'))
+            .catch(() => {
+                sessionStorage.removeItem('admin_token');
+                sessionStorage.removeItem('admin_role');
+            })
             .finally(() => setCheckingAdminAuth(false));
     }, [routeType]);
 
@@ -147,14 +159,14 @@ export default function App() {
                     {checkingAdminAuth ? (
                         <div className="flex h-screen items-center justify-center bg-[#0f0f11] text-zinc-400 text-sm">Checking admin session…</div>
                     ) : !isAdminAuth ? (
-                        <Login onLogin={() => setIsAdminAuth(true)} />
+                        <Login onLogin={({ role }) => { setUserRole(role); setIsAdminAuth(true); }} />
                     ) : (
                         <Suspense fallback={
                             <div className="flex h-screen items-center justify-center bg-[#0f0f11] text-zinc-400 text-sm">
                                 Loading Dashboard…
                             </div>
                         }>
-                            <AdminPanel />
+                            <AdminPanel userRole={userRole} />
                         </Suspense>
                     )}
                 </LanguageProvider>

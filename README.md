@@ -34,11 +34,11 @@ npm install
 npm run dev
 ```
 
-The API listens on `http://localhost:5000`. It allows browser requests from Vite at ports `5173` and `5174` by default. Product create, update, and delete operations require an admin bearer token; product listing is public. Site settings, including branches, are stored in MongoDB so changes are shared with visitors.
+The API listens on `http://localhost:5000`. It allows browser requests from Vite at ports `5173` and `5174` by default. `ADMIN_USERNAME` and `ADMIN_PASSWORD` configure the `super_admin` account. Optionally configure `DISPATCH_USERNAME` and `DISPATCH_PASSWORD` for a `dispatch_staff` account, which is restricted to the Dispatch Board. Product and site-setting mutations require a super-admin bearer token; dispatch-order routes accept either role. Product listing is public. Site settings, including branches, are stored in MongoDB so changes are shared with visitors.
 
 ### Production deployment
 
-1. Deploy `backend/` as a Node service. Configure `MONGODB_URI`, `ADMIN_USERNAME`, `ADMIN_PASSWORD`, `AUTH_SECRET` (at least 32 random characters), and `ALLOWED_ORIGINS` with the exact HTTPS site origins, separated by commas. Keep these values in the hosting provider's secret environment settings.
+1. Deploy `backend/` as a Node service. Configure `MONGODB_URI`, `ADMIN_USERNAME`, `ADMIN_PASSWORD`, `AUTH_SECRET` (at least 32 random characters), and `ALLOWED_ORIGINS` with the exact HTTPS site origins, separated by commas. Set `DISPATCH_USERNAME` and `DISPATCH_PASSWORD` too if a dispatch-only account is needed. Keep these values in the hosting provider's secret environment settings.
 2. Set the frontend build variable `VITE_API_URL` to the backend API base, for example `https://your-api-host.example.com/api`, then deploy the Vite project to Vercel.
 3. The Vercel rewrite serves the app routes from `index.html`; the admin sign-in URL is `/alnajjar-root`.
 4. After deployment, check `https://your-api-host.example.com/api/health` reports `database: "connected"`, then sign in with the configured admin credentials.

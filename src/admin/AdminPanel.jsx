@@ -1,4 +1,4 @@
-import { useState, memo } from 'react';
+import { useState, useEffect, memo } from 'react';
 import Sidebar from './components/Sidebar.jsx';
 import Topbar from './components/Topbar.jsx';
 import ProductsTab   from './tabs/ProductsTab.jsx';
@@ -22,15 +22,25 @@ const TAB_COMPONENTS = {
     about:      AboutTab,
 };
 
-export default memo(function AdminPanel() {
+export default memo(function AdminPanel({ userRole }) {
     const { settingsError } = useAdmin();
-    const [activeTab,   setActiveTab]   = useState('products');
+    const defaultTab = userRole === 'dispatch_staff' ? 'delivery' : 'products';
+    const [activeTab, setActiveTab] = useState(defaultTab);
     const [mobileOpen,  setMobileOpen]  = useState(false);  // overlay on mobile
     const [collapsed,   setCollapsed]   = useState(false);  // icon-only on desktop
 
-    const ActiveTab = TAB_COMPONENTS[activeTab] || null;
+    const allowedTabs = userRole === 'super_admin'
+        ? Object.keys(TAB_COMPONENTS)
+        : userRole === 'dispatch_staff' ? ['delivery'] : [];
+    const visibleTab = allowedTabs.includes(activeTab) ? activeTab : (allowedTabs[0] || null);
+    const ActiveTab = visibleTab ? TAB_COMPONENTS[visibleTab] : null;
+
+    useEffect(() => {
+        setActiveTab(defaultTab);
+    }, [defaultTab]);
 
     const handleTabClick = (id) => {
+        if (!allowedTabs.includes(id)) return;
         setActiveTab(id);
         setMobileOpen(false);   // always close overlay on tab pick
     };
@@ -47,7 +57,8 @@ export default memo(function AdminPanel() {
 
             {/* ── Sidebar ── */}
             <Sidebar 
-                activeTab={activeTab} 
+                activeTab={visibleTab}
+                userRole={userRole}
                 onTabClick={handleTabClick} 
                 mobileOpen={mobileOpen} 
                 setMobileOpen={setMobileOpen} 
@@ -58,7 +69,7 @@ export default memo(function AdminPanel() {
             {/* ── Main area ── */}
             <div className="flex-1 flex flex-col overflow-hidden min-w-0">
                 {/* Top bar */}
-                <Topbar activeTab={activeTab} setMobileOpen={setMobileOpen} />
+                <Topbar activeTab={visibleTab} setMobileOpen={setMobileOpen} />
 
                 {settingsError && <div role="alert" className="mx-4 mt-3 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">{settingsError}</div>}
 

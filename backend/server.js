@@ -10,7 +10,13 @@ const PORT = Number(process.env.PORT) || 5000;
 const MONGODB_URI = process.env.MONGODB_URI;
 const ADMIN_USERNAME = (process.env.ADMIN_USERNAME || '').trim().toLowerCase();
 const ADMIN_PASSWORD = (process.env.ADMIN_PASSWORD || '').trim();
+const DISPATCH_USERNAME = (process.env.DISPATCH_USERNAME || '').trim().toLowerCase();
+const DISPATCH_PASSWORD = (process.env.DISPATCH_PASSWORD || '').trim();
 const AUTH_SECRET = process.env.AUTH_SECRET;
+const accounts = [
+    ...(ADMIN_USERNAME && ADMIN_PASSWORD ? [{ username: ADMIN_USERNAME, password: ADMIN_PASSWORD, role: 'super_admin' }] : []),
+    ...(DISPATCH_USERNAME && DISPATCH_PASSWORD ? [{ username: DISPATCH_USERNAME, password: DISPATCH_PASSWORD, role: 'dispatch_staff' }] : []),
+];
 const configuredOrigins = process.env.ALLOWED_ORIGINS;
 const allowedOrigins = (configuredOrigins || 'http://localhost:5173,http://localhost:5174')
     .split(',').map(origin => origin.trim()).filter(Boolean);
@@ -27,7 +33,13 @@ if (!MONGODB_URI || !AUTH_SECRET || AUTH_SECRET.length < 32 || (process.env.NODE
     throw new Error('Set MONGODB_URI, AUTH_SECRET (at least 32 characters), and production ALLOWED_ORIGINS before starting the API.');
 }
 if (!ADMIN_USERNAME || !ADMIN_PASSWORD) {
-    console.warn('Admin login is unavailable: configure both ADMIN_USERNAME and ADMIN_PASSWORD in the server environment.');
+    console.warn('Super admin login is unavailable: configure both ADMIN_USERNAME and ADMIN_PASSWORD in the server environment.');
+}
+if (Boolean(DISPATCH_USERNAME) !== Boolean(DISPATCH_PASSWORD)) {
+    throw new Error('Configure both DISPATCH_USERNAME and DISPATCH_PASSWORD, or leave both unset.');
+}
+if (new Set(accounts.map(account => account.username)).size !== accounts.length) {
+    throw new Error('Super admin and dispatch staff usernames must be different.');
 }
 
 app.disable('x-powered-by');
@@ -56,8 +68,8 @@ const SiteSettings = mongoose.model('SiteSettings', new mongoose.Schema({
 const digest = value => crypto.createHash('sha256').update(String(value)).digest();
 const safeEqual = (left, right) => crypto.timingSafeEqual(digest(left), digest(right));
 const sign = value => crypto.createHmac('sha256', AUTH_SECRET).update(value).digest('base64url');
-const createToken = username => {
-    const payload = Buffer.from(JSON.stringify({ sub: username, exp: Math.floor(Date.now() / 1000) + 60 * 60 * 8 })).toString('base64url');
+const createToken = account => {
+    const payload = Buffer.from(JSON.stringify({ sub: account.username, role: account.role, exp: Math.floor(Date.now() / 1000) + 60 * 60 * 8 })).toString('base64url');
     return `${payload}.${sign(payload)}`;
 };
 const readToken = token => {
@@ -65,7 +77,8 @@ const readToken = token => {
     if (!payload || !signature || extra || !safeEqual(signature, sign(payload))) return null;
     try {
         const data = JSON.parse(Buffer.from(payload, 'base64url').toString());
-        return data.sub === ADMIN_USERNAME && data.exp > Math.floor(Date.now() / 1000) ? data : null;
+        const account = accounts.find(candidate => candidate.username === data.sub);
+        return account && data.role === account.role && data.exp > Math.floor(Date.now() / 1000) ? data : null;
     } catch { return null; }
 };
 const requireAdmin = (req, res, next) => {
@@ -75,10 +88,14 @@ const requireAdmin = (req, res, next) => {
     req.admin = admin;
     next();
 };
+const requireRoles = (...roles) => (req, res, next) => {
+    if (!roles.includes(req.admin?.role)) return res.status(403).json({ success: false, message: 'Your account does not have access to this resource' });
+    next();
+};
 
 const loginAttempts = new Map();
 app.post('/api/admin/login', (req, res) => {
-    if (!ADMIN_USERNAME || !ADMIN_PASSWORD) {
+    if (!accounts.length) {
         return res.status(503).json({ success: false, message: 'Admin login is not configured on the server' });
     }
     const ip = req.ip;
@@ -90,14 +107,15 @@ app.post('/api/admin/login', (req, res) => {
     loginAttempts.set(ip, entry);
     const username = String(req.body?.username || '').trim().toLowerCase();
     const password = String(req.body?.password || '').trim();
-    if (!safeEqual(username, ADMIN_USERNAME) || !safeEqual(password, ADMIN_PASSWORD)) {
+    const account = accounts.find(candidate => safeEqual(username, candidate.username) && safeEqual(password, candidate.password));
+    if (!account) {
         return res.status(401).json({ success: false, message: 'Invalid username or password' });
     }
     loginAttempts.delete(ip);
-    res.json({ success: true, token: createToken(ADMIN_USERNAME) });
+    res.json({ success: true, token: createToken(account), role: account.role });
 });
-app.get('/api/admin/session', requireAdmin, (_req, res) => res.json({ success: true }));
-app.use('/api/admin/delivery-orders', requireAdmin, createAdminDeliveryOrdersRouter({ DeliveryOrder }));
+app.get('/api/admin/session', requireAdmin, (req, res) => res.json({ success: true, role: req.admin.role }));
+app.use('/api/admin/delivery-orders', requireAdmin, requireRoles('super_admin', 'dispatch_staff'), createAdminDeliveryOrdersRouter({ DeliveryOrder }));
 app.get('/api/health', (_req, res) => res.json({ success: true, service: 'al-najjar-api', database: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected' }));
 
 app.get('/api/settings', async (_req, res) => {
@@ -109,7 +127,7 @@ app.get('/api/settings', async (_req, res) => {
         res.status(500).json({ success: false, message: 'Unable to fetch site settings' });
     }
 });
-app.put('/api/settings', requireAdmin, async (req, res) => {
+app.put('/api/settings', requireAdmin, requireRoles('super_admin'), async (req, res) => {
     const allowedKeys = ['categories', 'contact', 'hero', 'about', 'partners', 'branches'];
     const changes = Object.fromEntries(Object.entries(req.body || {}).filter(([key]) => allowedKeys.includes(key)));
     if (!Object.keys(changes).length) return res.status(400).json({ success: false, message: 'No supported settings were provided' });
@@ -126,7 +144,7 @@ app.get('/api/products', async (_req, res) => {
     try { res.json({ success: true, data: await Product.find().sort({ createdAt: -1 }).lean() }); }
     catch (error) { console.error('GET /api/products failed:', error); res.status(500).json({ success: false, message: 'Unable to fetch products' }); }
 });
-app.post('/api/products', requireAdmin, async (req, res) => {
+app.post('/api/products', requireAdmin, requireRoles('super_admin'), async (req, res) => {
     try {
         const { nameAr = '', nameEn = '', category, price, stock = 0, image = '', specs = {}, colors = [], images = [], sizes = [], labels = [] } = req.body;
         if (!category || !Number.isFinite(Number(price)) || Number(price) < 0 || !Number.isInteger(Number(stock)) || Number(stock) < 0) {
@@ -140,7 +158,7 @@ app.post('/api/products', requireAdmin, async (req, res) => {
         res.status(status).json({ success: false, message: status === 400 ? error.message : 'Unable to save product' });
     }
 });
-app.put('/api/products/:id', requireAdmin, async (req, res) => {
+app.put('/api/products/:id', requireAdmin, requireRoles('super_admin'), async (req, res) => {
     try {
         if (!mongoose.isObjectIdOrHexString(req.params.id)) return res.status(400).json({ success: false, message: 'Invalid product ID' });
         const fields = ['nameAr', 'nameEn', 'category', 'price', 'stock', 'image', 'specs', 'colors', 'images', 'sizes', 'labels'];
@@ -154,7 +172,7 @@ app.put('/api/products/:id', requireAdmin, async (req, res) => {
         res.status(status).json({ success: false, message: status === 400 ? error.message : 'Unable to update product' });
     }
 });
-app.delete('/api/products/:id', requireAdmin, async (req, res) => {
+app.delete('/api/products/:id', requireAdmin, requireRoles('super_admin'), async (req, res) => {
     try {
         if (!mongoose.isObjectIdOrHexString(req.params.id)) return res.status(400).json({ success: false, message: 'Invalid product ID' });
         const product = await Product.findByIdAndDelete(req.params.id);

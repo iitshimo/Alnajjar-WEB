@@ -330,18 +330,31 @@ export default function FuelManagementTab() {
     const [pageSize, setPageSize] = useState(25);
     const [chartRange, setChartRange] = useState('1M');
     const [exportFormat, setExportFormat] = useState('xlsx');
+    const [lastUpdated, setLastUpdated] = useState(null);
     const fileRef = useRef(null);
+    const loadInFlightRef = useRef(false);
 
-    const loadRecords = useCallback(async () => {
-        setLoading(true); setError('');
+    const loadRecords = useCallback(async ({ silent = false } = {}) => {
+        if (loadInFlightRef.current) return;
+        loadInFlightRef.current = true;
+        if (!silent) { setLoading(true); setError(''); }
         try {
             const result = await errorText(await fetch(apiUrl, { headers: tokenHeaders() }));
             setRecords(Array.isArray(result.data) ? result.data.filter(record => record && typeof record === 'object') : []);
-        } catch (requestError) { setError(requestError.message || 'Unable to load fuel records.'); }
-        finally { setLoading(false); }
+            setLastUpdated(new Date());
+        } catch (requestError) {
+            if (!silent) setError(requestError.message || 'Unable to load fuel records.');
+        } finally {
+            loadInFlightRef.current = false;
+            if (!silent) setLoading(false);
+        }
     }, []);
 
     useEffect(() => { loadRecords(); }, [loadRecords]);
+    useEffect(() => {
+        const intervalId = window.setInterval(() => loadRecords({ silent: true }), 18000);
+        return () => window.clearInterval(intervalId);
+    }, [loadRecords]);
     useEffect(() => { const timer = setTimeout(() => setSearch(searchInput.trim().toLowerCase()), 220); return () => clearTimeout(timer); }, [searchInput]);
     useEffect(() => { setPage(1); }, [search, vehicle, driver, station, dateFrom, dateTo, pageSize]);
     useEffect(() => { if (!toast) return undefined; const timer = setTimeout(() => setToast(''), 3200); return () => clearTimeout(timer); }, [toast]);
@@ -461,6 +474,7 @@ export default function FuelManagementTab() {
             <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
                 <div><div className="mb-1 flex items-center gap-2"><span className="material-icons text-brand">local_gas_station</span><span className="text-[10px] font-black uppercase tracking-[.18em] text-brand">Fleet Operations</span></div><h1 className="text-xl font-black text-white sm:text-2xl">إدارة استهلاك الوقود <span className="text-zinc-500">/ Fuel Consumption</span></h1><p className="mt-1 text-xs text-zinc-500">Monitor refueling, vehicle distance, and fleet efficiency.</p></div>
                 <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex items-center gap-2 text-[10px] text-zinc-500"><span>Updated {lastUpdated ? lastUpdated.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'}</span><button type="button" onClick={() => loadRecords({ silent: true })} aria-label="Refresh fuel data" title="Refresh Data" className="grid h-9 w-9 place-items-center rounded-lg border border-white/8 bg-white/[.03] text-zinc-400 hover:bg-white/[.07] hover:text-brand"><span className="material-icons text-[17px]">refresh</span></button></div>
                     <button onClick={() => { setModalRecord(null); setModalError(''); }} className="flex items-center gap-1.5 rounded-lg bg-brand px-3.5 py-2.5 text-xs font-black text-[#17130d] shadow-lg shadow-brand/10 hover:bg-brand-light"><span className="material-icons text-[17px]">add</span>Add Record</button>
                     <input ref={fileRef} type="file" accept=".xlsx,.xls,.html,.htm,.csv,.txt" className="hidden" onChange={importFile} />
                     <button onClick={() => fileRef.current?.click()} className="flex items-center gap-1.5 rounded-lg border border-white/8 bg-white/[.03] px-3 py-2.5 text-xs font-semibold text-zinc-300 hover:bg-white/[.07]"><span className="material-icons text-[16px]">upload_file</span>Import File</button>

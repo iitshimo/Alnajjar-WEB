@@ -22,8 +22,8 @@ const TAB_COMPONENTS = {
     about:      AboutTab,
 };
 
-export default memo(function AdminPanel({ userRole }) {
-    const { settingsError } = useAdmin();
+export default memo(function AdminPanel({ userRole, onLogout }) {
+    const { settingsError, clearAdminState } = useAdmin();
     const defaultTab = userRole === 'dispatch_staff' ? 'delivery' : 'products';
     const [activeTab, setActiveTab] = useState(defaultTab);
     const [mobileOpen,  setMobileOpen]  = useState(false);  // overlay on mobile
@@ -43,6 +43,11 @@ export default memo(function AdminPanel({ userRole }) {
         if (!allowedTabs.includes(id)) return;
         setActiveTab(id);
         setMobileOpen(false);   // always close overlay on tab pick
+    };
+
+    const handleLogout = () => {
+        clearAdminState();
+        onLogout?.();
     };
 
     return (
@@ -69,7 +74,7 @@ export default memo(function AdminPanel({ userRole }) {
             {/* ── Main area ── */}
             <div className="flex-1 flex flex-col overflow-hidden min-w-0">
                 {/* Top bar */}
-                <Topbar activeTab={visibleTab} setMobileOpen={setMobileOpen} />
+                <Topbar activeTab={visibleTab} setMobileOpen={setMobileOpen} onLogout={handleLogout} />
 
                 {settingsError && <div role="alert" className="mx-4 mt-3 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">{settingsError}</div>}
 

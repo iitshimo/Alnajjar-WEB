@@ -2,7 +2,7 @@ import { memo, useState, useRef, useEffect } from 'react';
 import { useLang } from '../../context/LanguageContext.jsx';
 import { TABS } from '../utils/constants.js';
 
-export default memo(function Topbar({ activeTab, setMobileOpen }) {
+export default memo(function Topbar({ activeTab, setMobileOpen, onLogout }) {
     const activeTabMeta = TABS.find(t => t.id === activeTab);
     const { t, lang, setLang, languages } = useLang();
     const [langOpen, setLangOpen] = useState(false);
@@ -74,6 +74,14 @@ export default memo(function Topbar({ activeTab, setMobileOpen }) {
                 <span className="material-icons text-[15px]">open_in_new</span>
                 <span className="hidden sm:inline">{t.nav.home}</span>
             </a>
+            <button
+                type="button"
+                onClick={onLogout}
+                className="flex items-center gap-1.5 text-[12px] font-bold text-red-300 hover:text-white bg-red-500/10 hover:bg-red-500/20 px-3 py-2 rounded-xl transition-colors shrink-0"
+            >
+                <span className="material-icons text-[16px]">logout</span>
+                <span>{t.admin.sidebar.logout || 'Logout'}</span>
+            </button>
         </header>
     );
 });

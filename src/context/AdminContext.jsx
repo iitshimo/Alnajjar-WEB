@@ -64,6 +64,20 @@ export function AdminProvider({ children }) {
     const [pendingOperations, setPendingOperations] = useState(0);
     const isLoading = pendingOperations > 0;
 
+    const clearAdminState = useCallback(() => {
+        setProducts([]);
+        setCategories(DEFAULT_CATEGORIES);
+        setContactInfo(DEFAULT_CONTACT);
+        setHeroSettings(DEFAULT_HERO);
+        setAboutContent(DEFAULT_ABOUT);
+        setPartnersSettings(DEFAULT_PARTNERS);
+        setBranches(DEFAULT_BRANCHES);
+        setLoading(true);
+        setProductsError('');
+        setSettingsError('');
+        setPendingOperations(0);
+    }, []);
+
     const authHeaders = () => ({ Authorization: `Bearer ${sessionStorage.getItem('admin_token') || ''}` });
     const refreshProducts = useCallback(async () => {
         setLoading(true);
@@ -195,8 +209,8 @@ export function AdminProvider({ children }) {
         products, categories, loading, productsError, settingsError, isLoading, refreshProducts, addProduct, updateProduct, deleteProduct, resetProducts: refreshProducts,
         contactInfo, updateContactInfo, resetContact, heroSettings, updateHeroSettings, resetHero,
         aboutContent, updateAboutContent, resetAbout, partnersSettings, updatePartnersSettings, addPartner, updatePartner, deletePartner, resetPartners,
-        branches, addBranch, updateBranch, deleteBranch, resetBranches, addCategory, deleteCategory, resetCategories,
-    }), [products, categories, loading, productsError, settingsError, isLoading, refreshProducts, addProduct, updateProduct, deleteProduct, contactInfo, updateContactInfo, resetContact, heroSettings, updateHeroSettings, resetHero, aboutContent, updateAboutContent, resetAbout, partnersSettings, updatePartnersSettings, addPartner, updatePartner, deletePartner, resetPartners, branches, addBranch, updateBranch, deleteBranch, resetBranches, addCategory, deleteCategory, resetCategories]);
+        branches, addBranch, updateBranch, deleteBranch, resetBranches, addCategory, deleteCategory, resetCategories, clearAdminState,
+    }), [products, categories, loading, productsError, settingsError, isLoading, refreshProducts, addProduct, updateProduct, deleteProduct, contactInfo, updateContactInfo, resetContact, heroSettings, updateHeroSettings, resetHero, aboutContent, updateAboutContent, resetAbout, partnersSettings, updatePartnersSettings, addPartner, updatePartner, deletePartner, resetPartners, branches, addBranch, updateBranch, deleteBranch, resetBranches, addCategory, deleteCategory, resetCategories, clearAdminState]);
     return <AdminContext.Provider value={value}>{children}</AdminContext.Provider>;
 }
 

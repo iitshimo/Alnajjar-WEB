@@ -185,36 +185,6 @@ export default memo(function Contact() {
                 </div>
             </div>
 
-            {/* Payments Section */}
-            <div className="max-w-5xl mx-auto px-6 sm:px-10 pb-16">
-                <div className="bg-white rounded-3xl border border-zinc-100 shadow-sm p-8 sm:p-10 text-center">
-                    {!loaded ? (
-                        <div className="flex flex-col items-center gap-6">
-                            <Skeleton className="h-3 w-40 rounded-full" />
-                            <div className="flex flex-wrap justify-center gap-6">
-                                {[1, 2, 3, 4, 5].map(i => (
-                                    <Skeleton key={i} className="w-16 h-10 rounded-lg" />
-                                ))}
-                            </div>
-                        </div>
-                    ) : (
-                        <>
-                            <div className="flex items-center gap-3 justify-center mb-8">
-                                <span className="h-px w-6 bg-zinc-200" />
-                                <h2 className="text-[11px] font-black text-zinc-400 uppercase tracking-[0.2em]">{c?.paymentsTitle}</h2>
-                                <span className="h-px w-6 bg-zinc-200" />
-                            </div>
-                            <div className="flex flex-wrap justify-center items-center gap-8 sm:gap-12 opacity-90 hover:opacity-100 transition-all duration-500">
-                                <img src="/Assets/Payments/visa.webp" alt="Visa" className="h-6 sm:h-8 w-auto object-contain" />
-                                <img src="/Assets/Payments/mster_card.webp" alt="MasterCard" className="h-8 sm:h-10 w-auto object-contain" />
-                                <img src="/Assets/Payments/amercan_express.webp" alt="American Express" className="h-7 sm:h-9 w-auto object-contain" />
-                                <img src="/Assets/Payments/tabby.webp" alt="Tabby" className="h-6 sm:h-8 w-auto object-contain" />
-                                <img src="/Assets/Payments/tamara.webp" alt="Tamara" className="h-6 sm:h-8 w-auto object-contain" />
-                            </div>
-                        </>
-                    )}
-                </div>
-            </div>
         </section>
     );
 });

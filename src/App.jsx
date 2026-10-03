@@ -144,6 +144,16 @@ export default function App() {
             .finally(() => setCheckingAdminAuth(false));
     }, [routeType]);
 
+    const handleAdminLogout = () => {
+        for (const storage of [sessionStorage, localStorage]) {
+            storage.removeItem('admin_token');
+            storage.removeItem('admin_role');
+        }
+        setIsAdminAuth(false);
+        setUserRole(null);
+        window.location.replace('/alnajjar-root');
+    };
+
     if (routeType === '404') {
         return (
             <LanguageProvider>
@@ -166,7 +176,7 @@ export default function App() {
                                 Loading Dashboard…
                             </div>
                         }>
-                            <AdminPanel userRole={userRole} />
+                            <AdminPanel userRole={userRole} onLogout={handleAdminLogout} />
                         </Suspense>
                     )}
                 </LanguageProvider>

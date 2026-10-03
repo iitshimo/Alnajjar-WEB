@@ -18,13 +18,9 @@ export default memo(function Header({ currentPage = 'home', setPage }) {
     const currRef = useRef(null);
 
     const openAdminFromLogo = (event) => {
+        if (!event.ctrlKey) return;
         event.preventDefault();
-        event.stopPropagation();
         window.location.href = '/alnajjar-root';
-    };
-
-    const handleLogoContextMenu = (event) => {
-        if (event.ctrlKey) openAdminFromLogo(event);
     };
 
     useEffect(() => {
@@ -53,8 +49,7 @@ export default memo(function Header({ currentPage = 'home', setPage }) {
                 <div className="flex-1 flex items-center gap-10 xl:gap-16 min-w-0">
                     <a
                         href="#/home"
-                        onContextMenu={handleLogoContextMenu}
-                        onDoubleClick={openAdminFromLogo}
+                        onClick={openAdminFromLogo}
                         className="shrink-0 relative group"
                     >
                         <div className="absolute inset-0 bg-brand/10 blur-xl rounded-full scale-0 group-hover:scale-150 transition-transform duration-700 ease-out" />

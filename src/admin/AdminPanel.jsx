@@ -9,10 +9,12 @@ import HeroTab       from './tabs/HeroTab.jsx';
 import BranchesTab   from './tabs/BranchesTab.jsx';
 import AboutTab      from './tabs/AboutTab.jsx';
 import DeliveryTab from './tabs/DeliveryTab.jsx';
+import FuelManagementTab from './tabs/FuelManagementTab.jsx';
 import { useAdmin } from '../context/AdminContext.jsx';
 
 const TAB_COMPONENTS = {
     delivery: DeliveryTab,
+    fuel: FuelManagementTab,
     products:   ProductsTab,
     categories: CategoriesTab,
     partners:   PartnersTab,
@@ -31,7 +33,7 @@ export default memo(function AdminPanel({ userRole, onLogout }) {
 
     const allowedTabs = userRole === 'super_admin'
         ? Object.keys(TAB_COMPONENTS)
-        : userRole === 'dispatch_staff' ? ['delivery'] : [];
+        : userRole === 'dispatch_staff' ? ['delivery', 'fuel'] : [];
     const visibleTab = allowedTabs.includes(activeTab) ? activeTab : (allowedTabs[0] || null);
     const ActiveTab = visibleTab ? TAB_COMPONENTS[visibleTab] : null;
 

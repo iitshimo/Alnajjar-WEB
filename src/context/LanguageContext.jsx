@@ -59,7 +59,7 @@ const translations = {
             paymentsTitle: 'طرق الدفع المتاحة',
         },
         admin: {
-            sidebar: { dashboard: 'لوحة القيادة', products: 'المنتجات', categories: 'الفئات', branches: 'الفروع', orders: 'الطلبات', hero: 'الواجهة', about: 'محتوى عن الشركة', partners: 'الشركاء', contact: 'التواصل', settings: 'الإعدادات العامة', logout: 'تسجيل الخروج', adminPortal: 'بوابة المسؤول', navigation: 'التنقل' },
+            sidebar: { dashboard: 'لوحة القيادة', products: 'المنتجات', categories: 'الفئات', branches: 'الفروع', orders: 'الطلبات', hero: 'الواجهة', about: 'محتوى عن الشركة', partners: 'الشركاء', contact: 'التواصل', fuel: 'استهلاك الوقود', settings: 'الإعدادات العامة', logout: 'تسجيل الخروج', adminPortal: 'بوابة المسؤول', navigation: 'التنقل' },
             topbar: { searchPlaceholder: 'بحث...', myProfile: 'ملفي الشخصي' },
             dashboard: { totalProducts: 'إجمالي المنتجات', totalCategories: 'إجمالي الفئات', lowStock: 'مخزون منخفض', totalOrders: 'إجمالي الطلبات', recentActivity: 'النشاط الأخير', sales: 'مبيعات', newProduct: 'منتج جديد', newUser: 'مستخدم جديد' },
             categories: { totalCategories: 'إجمالي الفئات', addNewCategory: 'إضافة فئة جديدة', nameEnglish: 'الاسم (بالإنجليزية)', nameArabic: 'الاسم (بالعربية)', add: 'إضافة', translating: 'جاري الترجمة...', reset: 'إعادة ضبط', noCategories: 'لم يتم العثور على فئات', delete: 'حذف', confirmReset: 'هل أنت متأكد من إعادة ضبط جميع الفئات؟' },
@@ -113,7 +113,7 @@ const translations = {
             paymentsTitle: 'Available Payment Methods',
         },
         admin: {
-            sidebar: { dashboard: 'Dashboard', products: 'Products', categories: 'Categories', branches: 'Branches', orders: 'Orders', hero: 'Hero', about: 'About Content', partners: 'Partners', contact: 'Contact', settings: 'General Settings', logout: 'Logout', adminPortal: 'Admin Portal', navigation: 'Navigation' },
+            sidebar: { dashboard: 'Dashboard', products: 'Products', categories: 'Categories', branches: 'Branches', orders: 'Orders', hero: 'Hero', about: 'About Content', partners: 'Partners', contact: 'Contact', fuel: 'Fuel Tracking', settings: 'General Settings', logout: 'Logout', adminPortal: 'Admin Portal', navigation: 'Navigation' },
             topbar: { searchPlaceholder: 'Search...', myProfile: 'My Profile' },
             dashboard: { totalProducts: 'Total Products', totalCategories: 'Total Categories', lowStock: 'Low Stock', totalOrders: 'Total Orders', recentActivity: 'Recent Activity', sales: 'Sales', newProduct: 'New Product', newUser: 'New User' },
             categories: { totalCategories: 'Total Categories', addNewCategory: 'Add New Category', nameEnglish: 'Name (English)', nameArabic: 'Name (Arabic)', add: 'Add', translating: 'Translating...', reset: 'Reset', noCategories: 'No categories found', delete: 'Delete', confirmReset: 'Reset all categories to default?' },

@@ -3,7 +3,10 @@ import express from 'express';
 import cors from 'cors';
 import mongoose from 'mongoose';
 import DeliveryOrder from './models/DeliveryOrder.js';
+import FuelRecord, { FuelCounter } from './models/FuelRecord.js';
 import createAdminDeliveryOrdersRouter from './routes/adminDeliveryOrders.js';
+import createAdminFuelRecordsRouter, { syncFuelSerial } from './routes/adminFuelRecords.js';
+import { defaultInitialRecords } from '../shared/fuelSeedData.js';
 
 const app = express();
 const PORT = Number(process.env.PORT) || 5000;
@@ -48,7 +51,7 @@ app.use(cors({ origin(origin, callback) {
     if (!origin || allowedOrigins.includes(origin) || isAllowedVercelPreviewOrigin(origin)) return callback(null, true);
     return callback(new Error('Origin is not allowed by CORS'));
 } }));
-app.use(express.json({ limit: '2mb' }));
+app.use(express.json({ limit: '10mb' }));
 
 const productSchema = new mongoose.Schema({
     nameAr: { type: String, default: '' }, nameEn: { type: String, default: '' },
@@ -116,6 +119,7 @@ app.post('/api/admin/login', (req, res) => {
 });
 app.get('/api/admin/session', requireAdmin, (req, res) => res.json({ success: true, role: req.admin.role }));
 app.use('/api/admin/delivery-orders', requireAdmin, requireRoles('super_admin', 'dispatch_staff'), createAdminDeliveryOrdersRouter({ DeliveryOrder }));
+app.use('/api/admin/fuel-records', requireAdmin, requireRoles('super_admin', 'dispatch_staff'), createAdminFuelRecordsRouter({ FuelRecord, FuelCounter }));
 app.get('/api/health', (_req, res) => res.json({ success: true, service: 'al-najjar-api', database: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected' }));
 
 app.get('/api/settings', async (_req, res) => {
@@ -192,6 +196,16 @@ app.use((error, _req, res, _next) => {
 try {
     await mongoose.connect(MONGODB_URI);
     console.info('MongoDB connected successfully');
+    if (await FuelRecord.countDocuments() === 0) {
+        const numericFuelFields = ['sn', 'startingKm', 'endKm', 'dayVal', 'trip1Km', 'trip2Km', 'kmDay', 'difference', 'fuel', 'lastKm', 'currentKm'];
+        const seedRecords = defaultInitialRecords.map(record => Object.fromEntries(Object.entries(record).map(([key, value]) => [
+            key,
+            numericFuelFields.includes(key) ? (value === '' || value === null ? 0 : Number(value)) : value,
+        ])));
+        await FuelRecord.insertMany(seedRecords);
+        console.info(`Seeded ${defaultInitialRecords.length} fuel records from the dashboard source.`);
+    }
+    await syncFuelSerial(FuelRecord, FuelCounter);
     const server = app.listen(PORT, () => console.info(`API server listening on port ${PORT}`));
     server.on('error', error => {
         console.error('API server failed to start:', error.message);

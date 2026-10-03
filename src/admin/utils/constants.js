@@ -7,4 +7,5 @@ export const TABS = [
     { id: 'hero',       label: 'Hero',       icon: 'wallpaper'     },
     { id: 'about',      label: 'About Us',   icon: 'info'          },
     { id: 'delivery',   label: 'Dispatch Board', icon: 'local_shipping' },
+    { id: 'fuel',       label: 'Fuel Tracking', icon: 'local_gas_station' },
 ];

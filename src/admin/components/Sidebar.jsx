@@ -7,7 +7,7 @@ export default memo(function Sidebar({ activeTab, userRole, onTabClick, mobileOp
     const { products } = useAdmin();
     const { t } = useLang();
     const visibleTabs = userRole === 'dispatch_staff'
-        ? TABS.filter(tab => tab.id === 'delivery')
+        ? TABS.filter(tab => ['delivery', 'fuel'].includes(tab.id))
         : userRole === 'super_admin' ? TABS : [];
 
     return (

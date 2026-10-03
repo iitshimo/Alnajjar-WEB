@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import Chart from 'chart.js/auto';
+import { Chart as ChartJS, registerables } from 'chart.js';
 import ExcelJS from 'exceljs';
 import { API_BASE_URL } from '../../api/config.js';
 import { driverPhonesMap, omanStationsData } from '../../../shared/omanStations.js';
+
+ChartJS.register(...registerables);
 
 const apiUrl = `${API_BASE_URL}/admin/fuel-records`;
 const tokenHeaders = () => ({ Authorization: `Bearer ${sessionStorage.getItem('admin_token') || ''}` });
@@ -17,8 +19,8 @@ const blankRecord = () => ({
     date: new Date().toISOString().slice(0, 10), car: '', driver: '', driverPhone: '', startingKm: '', endKm: '', dayVal: '',
     trip1: '', trip1Km: '', trip2: '', trip2Km: '', kmDay: '', difference: '', tnxAuth: '', site: '', fuel: '', lastKm: '', currentKm: '',
 });
-const distanceFor = record => Math.max(0, (Number(record.currentKm) || 0) - (Number(record.lastKm) || 0));
-const efficiencyFor = record => Number(record.fuel) > 0 ? distanceFor(record) / Number(record.fuel) : 0;
+const distanceFor = record => Math.max(0, (Number(record?.currentKm) || 0) - (Number(record?.lastKm) || 0));
+const efficiencyFor = record => Number(record?.fuel) > 0 ? distanceFor(record) / Number(record.fuel) : 0;
 const dateValue = value => {
     if (!value) return null;
     const time = Date.parse(String(value));
@@ -106,7 +108,7 @@ function FuelTrendChart({ records, range, setRange }) {
     const canvasRef = useRef(null);
     const chartRef = useRef(null);
     const chartRecords = useMemo(() => {
-        const dated = records.map(record => ({ record, date: dateValue(record.date) })).filter(entry => entry.date);
+        const dated = (records ?? []).filter(Boolean).map(record => ({ record, date: dateValue(record.date) })).filter(entry => entry.date);
         if (range === 'Max' || !dated.length) return dated;
         const maxDate = new Date(Math.max(...dated.map(entry => entry.date.getTime())));
         const cutoff = new Date(maxDate);
@@ -122,7 +124,8 @@ function FuelTrendChart({ records, range, setRange }) {
     }, [records, range]);
 
     useEffect(() => {
-        if (!canvasRef.current) return undefined;
+        const canvas = canvasRef.current;
+        if (!canvas) return undefined;
         const byDay = new Map();
         chartRecords.forEach(({ record, date }) => {
             const key = date.toISOString().slice(0, 10);
@@ -133,7 +136,7 @@ function FuelTrendChart({ records, range, setRange }) {
         });
         const points = [...byDay.entries()].sort(([left], [right]) => left.localeCompare(right));
         chartRef.current?.destroy();
-        chartRef.current = new Chart(canvasRef.current, {
+        chartRef.current = new ChartJS(canvas, {
             type: 'line',
             data: {
                 labels: points.map(([day]) => new Date(`${day}T00:00:00`).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: '2-digit' })),
@@ -156,7 +159,10 @@ function FuelTrendChart({ records, range, setRange }) {
                 },
             },
         });
-        return () => { chartRef.current?.destroy(); chartRef.current = null; };
+        return () => {
+            chartRef.current?.destroy();
+            chartRef.current = null;
+        };
     }, [chartRecords]);
 
     return (
@@ -175,11 +181,12 @@ function FuelTrendChart({ records, range, setRange }) {
 function RecordModal({ record, records, onClose, onSave, saving, error }) {
     const [form, setForm] = useState(() => ({ ...blankRecord(), ...record, date: dateInputValue(record?.date) || blankRecord().date }));
     const [stationQuery, setStationQuery] = useState('');
-    const drivers = [...new Set([...Object.keys(driverPhonesMap), ...records.map(item => item.driver).filter(Boolean)])].sort();
-    const vehicles = [...new Set(records.map(item => item.car).filter(Boolean))].sort();
+    const safeRecords = Array.isArray(records) ? records.filter(Boolean) : [];
+    const drivers = [...new Set([...Object.keys(driverPhonesMap), ...safeRecords.map(item => item.driver).filter(Boolean)])].sort();
+    const vehicles = [...new Set(safeRecords.map(item => item.car).filter(Boolean))].sort();
     const setField = (key, value) => setForm(current => ({ ...current, [key]: value }));
     const phoneForDriver = name => driverPhonesMap[String(name || '').toUpperCase()]
-        || records.find(item => String(item.driver || '').toUpperCase() === String(name || '').toUpperCase() && item.driverPhone)?.driverPhone
+        || safeRecords.find(item => String(item.driver || '').toUpperCase() === String(name || '').toUpperCase() && item.driverPhone)?.driverPhone
         || '';
     const sections = [
         { title: 'General Info', fields: [
@@ -329,7 +336,7 @@ export default function FuelManagementTab() {
         setLoading(true); setError('');
         try {
             const result = await errorText(await fetch(apiUrl, { headers: tokenHeaders() }));
-            setRecords(Array.isArray(result.data) ? result.data : []);
+            setRecords(Array.isArray(result.data) ? result.data.filter(record => record && typeof record === 'object') : []);
         } catch (requestError) { setError(requestError.message || 'Unable to load fuel records.'); }
         finally { setLoading(false); }
     }, []);
@@ -337,12 +344,11 @@ export default function FuelManagementTab() {
     useEffect(() => { loadRecords(); }, [loadRecords]);
     useEffect(() => { const timer = setTimeout(() => setSearch(searchInput.trim().toLowerCase()), 220); return () => clearTimeout(timer); }, [searchInput]);
     useEffect(() => { setPage(1); }, [search, vehicle, driver, station, dateFrom, dateTo, pageSize]);
-    useEffect(() => { setPage(current => Math.min(current, pageSize === 'all' ? 1 : Math.max(1, Math.ceil(filtered.length / pageSize)))); }, [filtered.length, pageSize]);
     useEffect(() => { if (!toast) return undefined; const timer = setTimeout(() => setToast(''), 3200); return () => clearTimeout(timer); }, [toast]);
 
-    const vehicles = useMemo(() => [...new Set(records.map(record => record.car).filter(Boolean))].sort(), [records]);
-    const drivers = useMemo(() => [...new Set(records.map(record => record.driver).filter(Boolean))].sort(), [records]);
-    const filtered = useMemo(() => records.filter(record => {
+    const vehicles = useMemo(() => [...new Set((records ?? []).filter(Boolean).map(record => record.car).filter(Boolean))].sort(), [records]);
+    const drivers = useMemo(() => [...new Set((records ?? []).filter(Boolean).map(record => record.driver).filter(Boolean))].sort(), [records]);
+    const filtered = useMemo(() => (records ?? []).filter(record => record && typeof record === 'object').filter(record => {
         if (vehicle && record.car !== vehicle) return false;
         if (driver && record.driver !== driver) return false;
         if (station && record.site !== station) return false;
@@ -354,20 +360,25 @@ export default function FuelManagementTab() {
         return true;
     }), [records, vehicle, driver, station, search, dateFrom, dateTo]);
 
+    useEffect(() => {
+        setPage(current => Math.min(current, pageSize === 'all' ? 1 : Math.max(1, Math.ceil((filtered?.length ?? 0) / pageSize))));
+    }, [filtered?.length, pageSize]);
+
     const stats = useMemo(() => {
-        const totalFuel = filtered.reduce((sum, record) => sum + (Number(record.fuel) || 0), 0);
-        const totalDistance = filtered.reduce((sum, record) => sum + distanceFor(record), 0);
-        const validFuelRecords = filtered.filter(record => Number(record.fuel) > 0);
+        const safeFiltered = filtered ?? [];
+        const totalFuel = safeFiltered.reduce((sum, record) => sum + (Number(record?.fuel) || 0), 0);
+        const totalDistance = safeFiltered.reduce((sum, record) => sum + distanceFor(record), 0);
+        const validFuelRecords = safeFiltered.filter(record => Number(record?.fuel) > 0);
         const forVehicle = matcher => {
-            const items = filtered.filter(record => matcher(String(record.car || '').toLowerCase()));
-            const fuel = items.reduce((sum, record) => sum + (Number(record.fuel) || 0), 0);
+            const items = safeFiltered.filter(record => matcher(String(record?.car || '').toLowerCase()));
+            const fuel = items.reduce((sum, record) => sum + (Number(record?.fuel) || 0), 0);
             const distance = items.reduce((sum, record) => sum + distanceFor(record), 0);
-            const count = items.filter(record => Number(record.fuel) > 0).length;
+            const count = items.filter(record => Number(record?.fuel) > 0).length;
             return { distance, efficiency: fuel ? distance / fuel : 0, avgFuel: count ? fuel / count : 0 };
         };
         return {
-            count: filtered.length, fuel: totalFuel, distance: totalDistance,
-            avgDistance: filtered.length ? totalDistance / filtered.length : 0,
+            count: safeFiltered.length, fuel: totalFuel, distance: totalDistance,
+            avgDistance: safeFiltered.length ? totalDistance / safeFiltered.length : 0,
             avgFuel: validFuelRecords.length ? totalFuel / validFuelRecords.length : 0,
             efficiency: totalFuel ? totalDistance / totalFuel : 0,
             mercedes: forVehicle(car => car.includes('mercedes') || car.includes('merc')),
@@ -459,21 +470,21 @@ export default function FuelManagementTab() {
 
             {error && <div role="alert" className="flex items-center justify-between gap-3 rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-200"><span>{error}</span><button onClick={() => setError('')} aria-label="Dismiss error" className="material-icons text-base">close</button></div>}
 
-            <section className="grid grid-cols-2 gap-3 xl:grid-cols-3 2xl:grid-cols-6">
+            {loading ? <section aria-label="Loading fuel dashboard" className="grid grid-cols-2 gap-3 xl:grid-cols-3 2xl:grid-cols-6">{Array.from({ length: 6 }, (_, index) => <div key={index} className={`${panelClass} h-24 animate-pulse p-4`}><div className="h-3 w-24 rounded bg-white/10" /><div className="mt-5 h-6 w-20 rounded bg-white/10" /></div>)}</section> : <section className="grid grid-cols-2 gap-3 xl:grid-cols-3 2xl:grid-cols-6">
                 <StatCard icon="receipt_long" label="Total Records" value={numberText(stats.count)} suffix="records" />
                 <StatCard icon="local_gas_station" label="Total Fuel Consumed" value={numberText(stats.fuel, 1)} suffix="liters" tone="text-sky-300" />
                 <StatCard icon="route" label="Total Distance" value={numberText(stats.distance, 1)} suffix="KM" tone="text-emerald-300" />
                 <StatCard icon="timeline" label="Avg Distance / Record" value={numberText(stats.avgDistance, 1)} suffix="KM" tone="text-violet-300" />
                 <StatCard icon="water_drop" label="Avg Fuel / Record" value={numberText(stats.avgFuel, 1)} suffix="L" tone="text-amber-300" />
                 <StatCard icon="speed" label="Overall Efficiency" value={numberText(stats.efficiency, 2)} suffix="KM/L" tone="text-emerald-300" />
-            </section>
+            </section>}
 
-            <section className="grid grid-cols-1 gap-3 xl:grid-cols-2">
+            {!loading && <section className="grid grid-cols-1 gap-3 xl:grid-cols-2">
                 {[
                     ['Mercedes', stats.mercedes, 'directions_car', 'text-sky-300'],
                     ['Volvo', stats.volvo, 'local_shipping', 'text-brand'],
                 ].map(([name, summary, icon, tone]) => <div key={name} className={`${panelClass} p-4 sm:p-5`}><div className="mb-4 flex items-center gap-2"><span className={`material-icons ${tone}`}>{icon}</span><h2 className="text-sm font-black text-white">{name} Fleet</h2></div><div className="grid grid-cols-3 gap-3"><div><p className="text-[10px] font-semibold text-zinc-500">Distance</p><p className="mt-1 text-base font-black text-white">{numberText(summary.distance, 1)} <span className="text-[10px] text-zinc-500">KM</span></p></div><div><p className="text-[10px] font-semibold text-zinc-500">Efficiency</p><p className="mt-1 text-base font-black text-emerald-300">{numberText(summary.efficiency, 2)} <span className="text-[10px] text-zinc-500">KM/L</span></p></div><div><p className="text-[10px] font-semibold text-zinc-500">Avg Fuel</p><p className="mt-1 text-base font-black text-white">{numberText(summary.avgFuel, 1)} <span className="text-[10px] text-zinc-500">L</span></p></div></div></div>)}
-            </section>
+            </section>}
 
             <FuelTrendChart records={filtered} range={chartRange} setRange={setChartRange} />
 
@@ -495,12 +506,12 @@ export default function FuelManagementTab() {
                         : filtered.length === 0 ? <tr><td colSpan="13" className="py-16 text-center"><span className="material-icons mb-2 block text-3xl text-zinc-700">local_gas_station</span><p className="text-sm font-semibold text-zinc-400">No fuel records found</p>{error && <button onClick={loadRecords} className="mt-3 rounded-lg bg-brand px-3 py-2 text-xs font-bold text-black">Retry</button>}</td></tr>
                             : paginated.map(record => {
                                 const efficiency = efficiencyFor(record);
-                                const phone = record.driverPhone || driverPhonesMap[String(record.driver || '').toUpperCase()] || '';
+                                const phone = String(record.driverPhone || driverPhonesMap[String(record.driver || '').toUpperCase()] || '');
                                 const highConsumption = Number(record.fuel) > averageFuel && Number(record.fuel) > 0;
                                 const whatsappText = `🚨 FUEL CONSUMPTION ALERT\nDriver: ${record.driver}\nVehicle: ${record.car}\nDate: ${record.date}\nRecorded fuel: ${numberText(record.fuel, 2)} liters\nEfficiency: ${numberText(efficiency, 2)} KM/L\nDistance covered: ${numberText(distanceFor(record), 2)} KM\nPlease review fuel efficiency to maintain optimal fleet performance.`;
                                 const whatsappUrl = `https://wa.me/${phone.replace(/\D/g, '')}?text=${encodeURIComponent(whatsappText)}`;
-                                return <tr key={record._id} className="border-b border-white/[.035] transition-colors hover:bg-white/[.025]">
-                                    <td className="px-3 py-3 text-xs font-bold text-brand">{record.sn}</td><td className="px-3 py-3 text-xs text-zinc-400">{displayDate(record.date)}</td><td className="px-3 py-3"><span className={`rounded-md border px-2 py-1 text-[10px] font-bold ${record.car.toLowerCase().includes('volvo') ? 'border-sky-500/20 bg-sky-500/10 text-sky-300' : 'border-brand/20 bg-brand/10 text-brand'}`}>{record.car || '—'}</span></td><td className="px-3 py-3 text-xs font-semibold text-zinc-200">{record.driver || '—'}</td><td className="px-3 py-3 text-xs text-zinc-500">{phone || '—'}</td><td className="px-3 py-3 text-xs text-zinc-400">{numberText(record.startingKm, 1)}</td><td className="px-3 py-3 text-xs text-zinc-400">{numberText(record.endKm, 1)}</td><td className="px-3 py-3 text-xs text-zinc-400">{numberText(record.dayVal, 1)}</td><td className="max-w-56 truncate px-3 py-3 text-xs text-zinc-400" title={record.trip1}>{record.trip1 || '—'}</td><td className="px-3 py-3 text-xs font-bold text-white">{numberText(record.fuel, 1)}</td><td className="px-3 py-3 text-xs text-zinc-400">{numberText(record.currentKm, 1)}</td><td className="px-3 py-3"><span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2 py-1 text-[10px] font-bold text-emerald-300">{numberText(efficiency, 2)} KM/L</span></td><td className="px-3 py-3"><div className="flex items-center gap-1"><button onClick={() => { setModalRecord(record); setModalError(''); }} title="Edit record" className="grid h-8 w-8 place-items-center rounded-lg bg-white/5 text-zinc-400 hover:bg-brand/15 hover:text-brand"><span className="material-icons text-[16px]">edit</span></button><button onClick={() => deleteRecord(record)} title="Delete record" className="grid h-8 w-8 place-items-center rounded-lg bg-white/5 text-zinc-400 hover:bg-red-500/15 hover:text-red-300"><span className="material-icons text-[16px]">delete</span></button>{highConsumption && phone && <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" title="Send high consumption WhatsApp alert" className="grid h-8 w-8 place-items-center rounded-lg bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20"><span className="material-icons text-[16px]">chat</span></a>}</div></td>
+                                return <tr key={record._id ?? record.sn} className="border-b border-white/[.035] transition-colors hover:bg-white/[.025]">
+                                    <td className="px-3 py-3 text-xs font-bold text-brand">{record.sn ?? '—'}</td><td className="px-3 py-3 text-xs text-zinc-400">{displayDate(record.date)}</td><td className="px-3 py-3"><span className={`rounded-md border px-2 py-1 text-[10px] font-bold ${String(record.car ?? '').toLowerCase().includes('volvo') ? 'border-sky-500/20 bg-sky-500/10 text-sky-300' : 'border-brand/20 bg-brand/10 text-brand'}`}>{record.car || '—'}</span></td><td className="px-3 py-3 text-xs font-semibold text-zinc-200">{record.driver || '—'}</td><td className="px-3 py-3 text-xs text-zinc-500">{phone || '—'}</td><td className="px-3 py-3 text-xs text-zinc-400">{numberText(record.startingKm, 1)}</td><td className="px-3 py-3 text-xs text-zinc-400">{numberText(record.endKm, 1)}</td><td className="px-3 py-3 text-xs text-zinc-400">{numberText(record.dayVal, 1)}</td><td className="max-w-56 truncate px-3 py-3 text-xs text-zinc-400" title={record.trip1}>{record.trip1 || '—'}</td><td className="px-3 py-3 text-xs font-bold text-white">{numberText(record.fuel, 1)}</td><td className="px-3 py-3 text-xs text-zinc-400">{numberText(record.currentKm, 1)}</td><td className="px-3 py-3"><span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2 py-1 text-[10px] font-bold text-emerald-300">{numberText(efficiency, 2)} KM/L</span></td><td className="px-3 py-3"><div className="flex items-center gap-1"><button onClick={() => { setModalRecord(record); setModalError(''); }} title="Edit record" className="grid h-8 w-8 place-items-center rounded-lg bg-white/5 text-zinc-400 hover:bg-brand/15 hover:text-brand"><span className="material-icons text-[16px]">edit</span></button><button onClick={() => deleteRecord(record)} title="Delete record" className="grid h-8 w-8 place-items-center rounded-lg bg-white/5 text-zinc-400 hover:bg-red-500/15 hover:text-red-300"><span className="material-icons text-[16px]">delete</span></button>{highConsumption && phone && <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" title="Send high consumption WhatsApp alert" className="grid h-8 w-8 place-items-center rounded-lg bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20"><span className="material-icons text-[16px]">chat</span></a>}</div></td>
                                 </tr>;
                             })}
                     </tbody></table></div>
